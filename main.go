@@ -5,9 +5,12 @@ import (
 	"net/http"
 )
 
+type HandlerFunc func(http.ResponseWriter, *http.Request)
+
 func main() {
-	handler := http.HandlerFunc(ServerGame)
-	if err := http.ListenAndServe(":5000", handler); err != nil {
+	server := &ServerGame{}
+
+	if err := http.ListenAndServe(":5000", server); err != nil {
 		log.Fatalf("could not listen in port 5000 %v", err)
 	}
 }
