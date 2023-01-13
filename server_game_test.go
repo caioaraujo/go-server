@@ -29,7 +29,7 @@ func TestGetGame(t *testing.T) {
 		request := newRequestGetYearRelease("SuperMarioWorld")
 		response := httptest.NewRecorder()
 
-		server.ServerHttp(response, request)
+		server.ServeHTTP(response, request)
 
 		checkRequestBody(t, response.Body.String(), "1990")
 	})
@@ -38,9 +38,23 @@ func TestGetGame(t *testing.T) {
 		request := newRequestGetYearRelease("SuperMetroid")
 		response := httptest.NewRecorder()
 
-		server.ServerHttp(response, request)
+		server.ServeHTTP(response, request)
 
 		checkRequestBody(t, response.Body.String(), "1994")
+	})
+
+	t.Run("return 404 for not found game", func(t *testing.T) {
+		request := newRequestGetYearRelease("GoldenAxe")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		obtained := response.Code
+		expected := http.StatusNotFound
+
+		if obtained != expected {
+			t.Errorf("received status %d expected %d", obtained, expected)
+		}
 	})
 }
 
