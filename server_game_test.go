@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +19,7 @@ func (e *MockStorageGame) GetGameYearRelease(game string) int {
 	return releasedYear
 }
 
-func (e *MockStorageGame) RegisterReleasedYear(game string) {
+func (e *MockStorageGame) RegisterReleasedYear(game string, releasedYear int) {
 	e.registerReleasedYear = append(e.registerReleasedYear, game)
 }
 
@@ -69,7 +71,7 @@ func TestStorageReleasedYear(t *testing.T) {
 	server := &ServerGame{&storage}
 
 	t.Run("return 'accepted' status for method POST calls", func(t *testing.T) {
-		request := newRequestRegisterReleasedYearPost("SuperMarioWorld")
+		request := newRequestRegisterReleasedYearPost("SuperMarioWorld", "1990")
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -81,6 +83,41 @@ func TestStorageReleasedYear(t *testing.T) {
 		}
 	})
 
+	t.Run("post released year for a specific game", func(t *testing.T) {
+		game := "FinalFantasyVI"
+		releasedYear := "1994"
+
+		request := newRequestRegisterReleasedYearPost(game, releasedYear)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		checkResponseStatusCode(t, response.Code, http.StatusAccepted)
+
+		if len(storage.registerReleasedYear) != 1 {
+			t.Errorf("after checking %d calls to RegisterReleasedYear, expected %d", len(storage.registerReleasedYear), 1)
+		}
+
+		if storage.registerReleasedYear[0] != game {
+			t.Errorf("could not record the game correctly, obtained '%s', expected '%s'", storage.registerReleasedYear[0], game)
+		}
+	})
+
+}
+
+func TestPostAndGetReleasedYear(t *testing.T) {
+	storage := NewStorageGameInMemory()
+	server := ServerGame{storage}
+	game := "SuperMarioWorld"
+	releasedYear := "1990"
+
+	server.ServeHTTP(httptest.NewRecorder(), newRequestRegisterReleasedYearPost(game, releasedYear))
+
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, newRequestGetYearRelease(game))
+	checkResponseStatusCode(t, response.Code, http.StatusOK)
+
+	checkRequestBody(t, response.Body.String(), releasedYear)
 }
 
 func newRequestGetYearRelease(game string) *http.Request {
@@ -88,8 +125,13 @@ func newRequestGetYearRelease(game string) *http.Request {
 	return request
 }
 
-func newRequestRegisterReleasedYearPost(game string) *http.Request {
-	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/games/%s", game), nil)
+func newRequestRegisterReleasedYearPost(game string, releasedYear string) *http.Request {
+	body, _ := json.Marshal(map[string]string{
+		"releasedYear": releasedYear,
+	})
+	payload := bytes.NewBuffer(body)
+
+	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/games/%s", game), payload)
 	return request
 }
 

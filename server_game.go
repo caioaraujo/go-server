@@ -1,48 +1,54 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 type StorageGame interface {
 	GetGameYearRelease(game string) int
-	RegisterReleasedYear(game string)
+	RegisterReleasedYear(game string, releasedYear int)
 }
 
-type StorageGameInMemory struct{}
+func NewStorageGameInMemory() *StorageGameInMemory {
+	return &StorageGameInMemory{map[string]int{}}
+}
+
+type StorageGameInMemory struct {
+	storage map[string]int
+}
 
 type ServerGame struct {
 	storage StorageGame
 }
 
 func (s *ServerGame) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	game := r.URL.Path[len("/games/"):]
+
 	switch r.Method {
 	case http.MethodPost:
-		s.registerReleasedYear(w)
+		var res map[string]string
+		json.NewDecoder(r.Body).Decode(&res)
+		releasedYear := res["releasedYear"]
+		releasedYearAsInt, _ := strconv.Atoi(releasedYear)
+		s.registerReleasedYear(w, game, releasedYearAsInt)
 	case http.MethodGet:
-		s.showReleasedYear(w, r)
+		s.showReleasedYear(w, game)
 	}
 
 }
 
-func GetGameYearRelease(game string) string {
-
-	if game == "SuperMarioWorld" {
-		return "1990"
-	}
-
-	if game == "SuperMetroid" {
-		return "1994"
-	}
-
-	return ""
+func (s *StorageGameInMemory) GetGameYearRelease(game string) int {
+	return s.storage[game]
 }
 
-func (s *StorageGameInMemory) RegisterReleasedYear(game string) {}
+func (s *StorageGameInMemory) RegisterReleasedYear(game string, releasedYear int) {
+	s.storage[game] = releasedYear
+}
 
-func (s *ServerGame) showReleasedYear(w http.ResponseWriter, r *http.Request) {
-	game := r.URL.Path[len("/games/"):]
+func (s *ServerGame) showReleasedYear(w http.ResponseWriter, game string) {
 	releasedYear := s.storage.GetGameYearRelease(game)
 
 	if releasedYear == 0 {
@@ -51,7 +57,7 @@ func (s *ServerGame) showReleasedYear(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, releasedYear)
 }
 
-func (s *ServerGame) registerReleasedYear(w http.ResponseWriter) {
-	s.storage.RegisterReleasedYear("MortalKombat")
+func (s *ServerGame) registerReleasedYear(w http.ResponseWriter, game string, releasedYear int) {
+	s.storage.RegisterReleasedYear(game, releasedYear)
 	w.WriteHeader(http.StatusAccepted)
 }
