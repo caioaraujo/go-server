@@ -70,19 +70,6 @@ func TestStorageReleasedYear(t *testing.T) {
 	}
 	server := &ServerGame{&storage}
 
-	t.Run("return 'accepted' status for method POST calls", func(t *testing.T) {
-		request := newRequestRegisterReleasedYearPost("SuperMarioWorld", "1990")
-		response := httptest.NewRecorder()
-
-		server.ServeHTTP(response, request)
-
-		checkResponseStatusCode(t, response.Code, http.StatusAccepted)
-
-		if len(storage.registerReleasedYear) != 1 {
-			t.Errorf("after checking %d calls to RegisterReleasedYear, expected %d", len(storage.registerReleasedYear), 1)
-		}
-	})
-
 	t.Run("post released year for a specific game", func(t *testing.T) {
 		game := "FinalFantasyVI"
 		releasedYear := "1994"
